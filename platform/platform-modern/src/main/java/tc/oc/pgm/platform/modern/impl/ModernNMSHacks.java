@@ -55,6 +55,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Fireball;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerPickupArrowEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 import org.bukkit.event.world.WorldLoadEvent;
@@ -120,6 +121,10 @@ public class ModernNMSHacks implements NMSHacks {
 
   @Override
   public Inventory createFakeInventory(Player viewer, Inventory realInventory) {
+    if (realInventory.getType() == InventoryType.WORKBENCH) {
+      return Bukkit.createInventory(viewer, InventoryType.CHEST, Component.text("Crafting Table"));
+    }
+
     Component customName;
     if (realInventory instanceof Nameable n && (customName = n.customName()) != null) {
       return realInventory instanceof DoubleChestInventory
