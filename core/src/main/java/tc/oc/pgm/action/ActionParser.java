@@ -694,7 +694,8 @@ public class ActionParser {
         .validate(this::validateVelocityActionFormula)
         .required();
 
-    return new VelocityAction(xFormula, yFormula, zFormula);
+    boolean vehicle = parser.parseBool(el, "vehicle").attr().optional(false);
+    return new VelocityAction(xFormula, yFormula, zFormula, vehicle);
   }
 
   private void validateVelocityActionFormula(Formula<MatchPlayer> formula, Node node) {

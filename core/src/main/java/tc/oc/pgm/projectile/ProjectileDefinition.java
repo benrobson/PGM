@@ -4,7 +4,9 @@ import java.time.Duration;
 import java.util.List;
 import org.bukkit.potion.PotionEffect;
 import org.jetbrains.annotations.Nullable;
+import tc.oc.pgm.action.Action;
 import tc.oc.pgm.api.filter.Filter;
+import tc.oc.pgm.api.player.MatchPlayer;
 import tc.oc.pgm.features.SelfIdentifyingFeatureDefinition;
 import tc.oc.pgm.projectile.projectiles.PgmProjectile;
 
@@ -18,6 +20,7 @@ public class ProjectileDefinition extends SelfIdentifyingFeatureDefinition {
   protected final Filter destroyFilter;
   protected final Duration coolDown;
   protected final boolean throwable;
+  protected final @Nullable Action<? super MatchPlayer> hitAction;
 
   public ProjectileDefinition(
       @Nullable String id,
@@ -29,7 +32,8 @@ public class ProjectileDefinition extends SelfIdentifyingFeatureDefinition {
       List<PotionEffect> potion,
       Filter destroyFilter,
       Duration coolDown,
-      boolean throwable) {
+      boolean throwable,
+      @Nullable Action<? super MatchPlayer> hitAction) {
     super(id);
     this.name = name;
     this.damage = damage;
@@ -40,6 +44,7 @@ public class ProjectileDefinition extends SelfIdentifyingFeatureDefinition {
     this.destroyFilter = destroyFilter;
     this.coolDown = coolDown;
     this.throwable = throwable;
+    this.hitAction = hitAction;
   }
 
   public @Nullable String getName() {

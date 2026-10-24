@@ -4,7 +4,9 @@ import static tc.oc.pgm.util.Assert.assertTrue;
 
 import com.google.common.collect.ImmutableSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -12,6 +14,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Vehicle;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -60,6 +63,7 @@ public class ProjectileMatchModule implements MatchModule, Listener {
   private final Map<UUID, ProjectileCooldowns> projectileCooldowns = new HashMap<>();
 
   private static final String DEFINITION_KEY = "projectileDefinition";
+  private static final String HIT_KEY = "pgm-projectile-hit";
 
   public ProjectileMatchModule(
       Match match, ImmutableSet<ProjectileDefinition> projectileDefinitions) {
@@ -137,6 +141,8 @@ public class ProjectileMatchModule implements MatchModule, Listener {
       if (projectileDefinition.damage != null) {
         event.setDamage(projectileDefinition.damage);
       }
+
+      runHitAction(event.getDamager(), projectileDefinition, damagedEntity);
     }
   }
 
@@ -145,6 +151,7 @@ public class ProjectileMatchModule implements MatchModule, Listener {
     Projectile projectile = event.getEntity();
     ProjectileDefinition projectileDefinition = getProjectileDefinition(projectile);
     if (projectileDefinition == null) return;
+    hitVehicles(projectile, projectileDefinition);
     Filter filter = projectileDefinition.destroyFilter;
     if (filter == null) return;
 
@@ -181,6 +188,44 @@ public class ProjectileMatchModule implements MatchModule, Listener {
         }
       }
     }
+  }
+
+  /**
+   * Vehicles like boats and minecarts don't take damage events from projectiles, so their riders
+   * would never notice being hit. Treat a hit on a ridden vehicle as a hit on its rider: they get
+   * the projectile's potion effects and its {@code action}. The shooter's own vehicle is ignored.
+   */
+  private void hitVehicles(Projectile projectile, ProjectileDefinition definition) {
+    if (definition.potion.isEmpty() && definition.hitAction == null) return;
+    for (Entity nearby : projectile.getNearbyEntities(1.5, 1.5, 1.5)) {
+      if (!(nearby instanceof Vehicle) || nearby instanceof LivingEntity) continue;
+      Entity passenger = nearby.getPassenger();
+      if (!(passenger instanceof LivingEntity rider) || rider.equals(projectile.getShooter()))
+        continue;
+      if (!definition.potion.isEmpty()) rider.addPotionEffects(definition.potion);
+      runHitAction(projectile, definition, rider);
+    }
+  }
+
+  /**
+   * Run the projectile's {@code action} on the player that was hit, or on the player riding the
+   * entity that was hit. Each player is only affected once per projectile.
+   */
+  private void runHitAction(Entity projectile, ProjectileDefinition definition, Entity hit) {
+    if (definition.hitAction == null) return;
+    Entity target = hit instanceof Player ? hit : hit.getPassenger();
+    if (!(target instanceof Player player)) return;
+    if (projectile instanceof Projectile p && player.equals(p.getShooter())) return;
+
+    MatchPlayer matchPlayer = match.getPlayer(player);
+    if (matchPlayer == null || !matchPlayer.isParticipating()) return;
+
+    Set<UUID> affected = MetadataUtils.getMetadataValue(projectile, HIT_KEY, PGM.get());
+    if (affected == null) {
+      affected = new HashSet<>();
+      projectile.setMetadata(HIT_KEY, new FixedMetadataValue(PGM.get(), affected));
+    }
+    if (affected.add(player.getUniqueId())) definition.hitAction.trigger(matchPlayer);
   }
 
   @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

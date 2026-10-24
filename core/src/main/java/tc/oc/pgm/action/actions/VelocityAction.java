@@ -10,13 +10,27 @@ public class VelocityAction extends AbstractAction<MatchPlayer> {
   private final Formula<MatchPlayer> xformula;
   private final Formula<MatchPlayer> yformula;
   private final Formula<MatchPlayer> zformula;
+  private final boolean vehicle;
 
   public VelocityAction(
       Formula<MatchPlayer> xformula, Formula<MatchPlayer> yformula, Formula<MatchPlayer> zformula) {
+    this(xformula, yformula, zformula, false);
+  }
+
+  /**
+   * @param vehicle if true and the player is riding something, the velocity is applied to the
+   *     vehicle they ride instead of the player
+   */
+  public VelocityAction(
+      Formula<MatchPlayer> xformula,
+      Formula<MatchPlayer> yformula,
+      Formula<MatchPlayer> zformula,
+      boolean vehicle) {
     super(MatchPlayer.class);
     this.xformula = xformula;
     this.yformula = yformula;
     this.zformula = zformula;
+    this.vehicle = vehicle;
   }
 
   @Override
@@ -24,6 +38,12 @@ public class VelocityAction extends AbstractAction<MatchPlayer> {
     double x = xformula.apply(matchPlayer, context.frame());
     double y = yformula.apply(matchPlayer, context.frame());
     double z = zformula.apply(matchPlayer, context.frame());
-    matchPlayer.getBukkit().setVelocity(VectorUtils.clampVelocityVector(new Vector(x, y, z)));
+    Vector velocity = VectorUtils.clampVelocityVector(new Vector(x, y, z));
+    org.bukkit.entity.Entity ridden = matchPlayer.getBukkit().getVehicle();
+    if (vehicle && ridden != null) {
+      ridden.setVelocity(velocity);
+    } else {
+      matchPlayer.getBukkit().setVelocity(velocity);
+    }
   }
 }

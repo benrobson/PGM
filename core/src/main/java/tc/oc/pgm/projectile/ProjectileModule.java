@@ -16,11 +16,13 @@ import org.bukkit.entity.Fireball;
 import org.bukkit.potion.PotionEffect;
 import org.jdom2.Document;
 import org.jdom2.Element;
+import tc.oc.pgm.action.ActionModule;
 import tc.oc.pgm.api.filter.Filter;
 import tc.oc.pgm.api.map.MapModule;
 import tc.oc.pgm.api.map.factory.MapFactory;
 import tc.oc.pgm.api.map.factory.MapModuleFactory;
 import tc.oc.pgm.api.match.Match;
+import tc.oc.pgm.api.player.MatchPlayer;
 import tc.oc.pgm.filters.FilterModule;
 import tc.oc.pgm.projectile.projectiles.EntityProjectile;
 import tc.oc.pgm.projectile.projectiles.PgmProjectile;
@@ -48,6 +50,11 @@ public class ProjectileModule implements MapModule<ProjectileMatchModule> {
     }
 
     @Override
+    public Collection<Class<? extends MapModule<?>>> getWeakDependencies() {
+      return ImmutableList.of(ActionModule.class);
+    }
+
+    @Override
     public ProjectileModule parse(MapFactory factory, Logger logger, Document doc)
         throws InvalidXMLException {
       Set<ProjectileDefinition> projectiles = new HashSet<>();
@@ -67,6 +74,7 @@ public class ProjectileModule implements MapModule<ProjectileMatchModule> {
         Filter destroyFilter = parser.filter(el, "destroy-filter").orNull();
         Duration coolDown = parser.duration(el, "cooldown").attr().orNull();
         boolean throwable = parser.parseBool(el, "throwable").attr().optional(true);
+        var hitAction = parser.action(MatchPlayer.class, el, "action").orNull();
 
         ProjectileDefinition projectileDefinition = new ProjectileDefinition(
             id,
@@ -78,7 +86,8 @@ public class ProjectileModule implements MapModule<ProjectileMatchModule> {
             potionKit,
             destroyFilter,
             coolDown,
-            throwable);
+            throwable,
+            hitAction);
 
         factory.getFeatures().addFeature(el, projectileDefinition);
         projectiles.add(projectileDefinition);
